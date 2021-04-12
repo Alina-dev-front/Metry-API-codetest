@@ -6,57 +6,27 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	"github.com/Alina-dev-front/Metry-API-codetest/counters"
+	"github.com/Alina-dev-front/Metry-API-codetest/data"
 )
 
-type Response struct {
-	Meters []Meter `json:"data"`
-}
-
-type Meter struct {
-	Root struct {
-		ID string `json:"_id"`
-	} `json:"root"`
-	EAN         string `json:"ean"`
-	Consumption int
-	Box         string
-	Revoked     bool
-}
-
-type ConsumptionResponse struct {
-	Data []Consumption `json:"data"`
-}
-type Consumption struct {
-	MeterID string `json:"meter_id"`
-	Periods []struct {
-		Energy    []int  `json:"energy"`
-		StartDate string `json:"start_date"`
-	} `json:"periods"`
-}
+var TOKEN string
+var BASEURL = "https://app.metry.io/api/v2/"
 
 func GetMeters() {
-	response, err := http.Get("https://app.metry.io/api/v2/meters/?access_token=a4e9522bb4a335e850967754207859aa972e2e20ca9871d3f276390b757c&id=5825c85d22c8aa00606b9dd5")
+	response, err := http.Get(BASEURL + "meters/?access_token=" + TOKEN)
 
 	if err != nil {
-		fmt.Println("The http request failed with the error %s\n", err)
+		fmt.Printf("The http request failed with the error %s\n", err)
 	}
 
-	data, _ := ioutil.ReadAll(response.Body)
+	resp, _ := ioutil.ReadAll(response.Body)
 
-	var responseObject Response
-	json.Unmarshal(data, &responseObject)
+	var responseObject data.Response
+	json.Unmarshal(resp, &responseObject)
 
-	for i := 0; i < len(responseObject.Meters); i++ {
-		meter := responseObject.Meters[i]
-
-		if meter.Revoked == false && (meter.Box == "active" || meter.Box == "temporary") {
-			meter.Consumption = GetConsumption(meter.Root.ID)
-		} else {
-			meter.Consumption = 0
-		}
-
-		fmt.Println("The meter's id is " + meter.Root.ID + ", the ean is " + meter.EAN + ", consumption is " + strconv.Itoa(meter.Consumption))
-
-	}
+	responseObject.Meters = SetComsumptionToMeter(responseObject.Meters)
 
 	output, err := json.Marshal(responseObject)
 	if err != nil {
@@ -66,29 +36,44 @@ func GetMeters() {
 	fmt.Println(string(output))
 }
 
-func GetConsumption(meterID string) int {
-	resp, err := http.Get("https://app.metry.io/api/v2/consumptions/" + meterID + "/month/2021?access_token=a4e9522bb4a335e850967754207859aa972e2e20ca9871d3f276390b757c")
+func SetComsumptionToMeter(meters []data.Meter) []data.Meter {
+
+	for i := 0; i < len(meters); i++ {
+		activeOrTemporaryBox := meters[i].Box == "active" || meters[i].Box == "temporary"
+
+		if meters[i].Revoked == false && activeOrTemporaryBox {
+			meters[i].Consumption = GetConsumption(meters[i].Root.ID)
+		} else {
+			meters[i].Consumption = "null"
+		}
+	}
+
+	return meters
+}
+
+func GetConsumption(meterID string) string {
+	resp, err := http.Get(BASEURL + "consumptions/" + meterID + "/month/2021?access_token=" + TOKEN)
 
 	if err != nil {
-		fmt.Println("The http request failed with the error %s\n", err)
+		fmt.Printf("The http request failed with the error %s\n", err)
 	}
 
 	consdata, _ := ioutil.ReadAll(resp.Body)
 
-	var response ConsumptionResponse
+	var response data.ConsumptionResponse
 	json.Unmarshal(consdata, &response)
 
-	var latestEnergyConsumption = 0
-	for _, val := range response.Data[0].Periods[0].Energy {
-		if val > 0 {
-			latestEnergyConsumption = val
-		}
-	}
-	return latestEnergyConsumption
+	latestEnergyConsumption := counters.GetLatestEnergyConsumption(response.Data[0].Periods[0].Energy)
+	return strconv.Itoa(latestEnergyConsumption)
 }
 
 func main() {
+
 	fmt.Println("Starting the application...")
+	fmt.Println("Insert access token below: ")
+	var token string
+	fmt.Scanln(&token)
+	TOKEN = token
 
 	GetMeters()
 
