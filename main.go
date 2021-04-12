@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Alina-dev-front/Metry-API-codetest/counters"
-	"github.com/Alina-dev-front/Metry-API-codetest/data"
+	"Metry-API-codetest/counters"
+
+	"Metry-API-codetest/data"
 )
 
 var TOKEN string
@@ -43,6 +44,7 @@ func SetComsumptionToMeter(meters []data.Meter) []data.Meter {
 
 		if meters[i].Revoked == false && activeOrTemporaryBox {
 			meters[i].Consumption = GetConsumption(meters[i].Root.ID)
+
 		} else {
 			meters[i].Consumption = "null"
 		}
@@ -74,6 +76,7 @@ func main() {
 	var token string
 	fmt.Scanln(&token)
 	TOKEN = token
+	fmt.Println("Processing your request...")
 
 	GetMeters()
 
