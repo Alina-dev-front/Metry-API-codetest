@@ -2,7 +2,13 @@
 
 To get started with the project you might need to have GO installed. See how to do it here https://golang.org/doc/install
 
-Recomendation is to put project folder in your GOPATH!
+Recomendation is to put project folder under your GOPATH!
+Example:
+
+```
+/usr/local/go/src/Metry-API-codetest
+```
+
 If you are not sure where to put project, run 
 
 ```
